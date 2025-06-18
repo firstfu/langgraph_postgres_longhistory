@@ -194,22 +194,34 @@ class MultiLabelTextDataset(Dataset):
 
             # 文本向量化 - 確保轉換為 numpy 密集矩陣
             tfidf_sparse = self.vectorizer.fit_transform(texts)
-            self.X = tfidf_sparse.toarray()  # 直接轉換為密集矩陣
+            self.X = tfidf_sparse.toarray()  # type: ignore
             # 標籤編碼
-            self.y = self.mlb.fit_transform(labels)
+            labels_encoded = self.mlb.fit_transform(labels)
+            # 確保轉換為密集數組格式
+            from scipy import sparse
+            if sparse.issparse(labels_encoded):
+                self.y = labels_encoded.toarray()  # type: ignore
+            else:
+                self.y = labels_encoded
         else:
             # 測試時使用已有的向量化器和編碼器
             self.vectorizer = vectorizer
             self.mlb = mlb
             tfidf_sparse = self.vectorizer.transform(texts)
-            self.X = tfidf_sparse.toarray()  # 直接轉換為密集矩陣
-            self.y = self.mlb.transform(labels)
+            self.X = tfidf_sparse.toarray()  # type: ignore
+            labels_encoded = self.mlb.transform(labels)
+            # 確保轉換為密集數組格式
+            from scipy import sparse
+            if sparse.issparse(labels_encoded):
+                self.y = labels_encoded.toarray()  # type: ignore
+            else:
+                self.y = labels_encoded
 
     def __len__(self):
         return len(self.texts)
 
     def __getitem__(self, idx):
-        return torch.FloatTensor(self.X[idx]), torch.FloatTensor(self.y[idx])
+        return torch.FloatTensor(self.X[idx]), torch.FloatTensor(self.y[idx])  # type: ignore
 
 # 3. 定義多標籤分類模型
 class MultiLabelClassifier(nn.Module):
@@ -312,7 +324,7 @@ def predict_new_text(model, text, vectorizer, mlb, device, threshold=0.3):
 
     # 向量化新文本
     text_sparse = vectorizer.transform([text])
-    text_vector = text_sparse.toarray()  # 轉換為numpy密集矩陣
+    text_vector = text_sparse.toarray()  # type: ignore
     text_tensor = torch.FloatTensor(text_vector).to(device)
 
     with torch.no_grad():
